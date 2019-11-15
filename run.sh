@@ -1,1 +1,3 @@
-arduino-cli upload -p /dev/cu.usbmodem141301 -b arduino:avr:uno clapper
+PORT=$1
+SCRIPT=$2
+arduino-cli upload -p $PORT -b arduino:avr:uno $SCRIPT

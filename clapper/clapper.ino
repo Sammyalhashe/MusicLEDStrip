@@ -22,16 +22,26 @@
   http://www.arduino.cc/en/Tutorial/Blink
 */
 //#define DIGITAL_INPUT 3
+#include "FastLED.h"
+#define DELAY 10
+#define UPDATE_LEDS 6
+#define NUM_LEDS 200
+#define COLOR_ORDER GRB
+#define LED_TYPE WS2812B
+#define BRIGHTNESS 64
 #define ANALOG A0
 #define LED 9
 #define DIGITAL_LED 8
 #define R_LIGHT 9
 #define G_LIGHT 10
 #define B_LIGHT 11
-#define THRESH 30
+#define THRESH 40
+#define DATAPIN 6
+CRGB leds[NUM_LEDS];
 boolean trig = true;
 boolean state = true;
 float analog_sig;
+int time = 0;
 
 struct color {
     int r;
@@ -49,7 +59,12 @@ void setColor(Color *c, int r, int g, int b) {
 }
 
 void randomColor(Color *c) {
-    setColor(c, random(0, 255), random(0, 255), random(0, 255));
+    setColor(c, random8(), 255, random8());
+}
+
+void crgbFromColor(CRGB *crgb, Color c) {
+    // CRGB PURPLE = CHSV( HUE_PURPLE, 255, 255 );
+    *crgb = CHSV(c.r, c.g, c.b);
 }
 
 void writeRGB(Color c) {
@@ -70,36 +85,61 @@ void setup() {
     setColor(&c, 0, 0, 0);
 //  pinMode(DIGITAL_INPUT, INPUT);
   Serial.begin(9600);
+  FastLED.addLeds<LED_TYPE, DATAPIN>(leds, NUM_LEDS);
+  FastLED.setBrightness(BRIGHTNESS);
+
+  for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CRGB(0, 0, 0);
+  }
+  FastLED.show();
+  delay(1000);
 }
 
 
+CRGB crgb = CRGB(0, 0, 0);
+float avgVolume = 0;
+float volume;
+float prevVolume = 0;
 // the loop function runs over and over again forever
 void loop() {
-//  trig = digitalRead(DIGITAL_INPUT);
+  for (int i = NUM_LEDS - 1; i >= UPDATE_LEDS; i--) {
+    leds[i] = leds[i - UPDATE_LEDS];
+  }
   analog_sig = analogRead(ANALOG);
+  volume = analog_sig;
+  // update the average volume
+  avgVolume = (avgVolume + volume) / 2.0;
+  if (volume < avgVolume / 2.0 || volume < 15) {
+      volume = 0.0;
+  }
   Serial.println(analog_sig);
   // setting rgb values the same for now
   writeRGB(c);
   // if the sensor senses something and
   // it's off initially
   // should turn on
-  if (analog_sig >= THRESH) {
+  if (volume > THRESH) {
     digitalWrite(DIGITAL_LED, HIGH);
     randomColor(&c);
 //    analogWrite(LED, analog_sig);
+    crgbFromColor(&crgb, c);
     state = true;
+    for (int i = 0; i < UPDATE_LEDS; i++) {
+      leds[i] = crgb;
+    }
   }
+  FastLED.show();
+
+
   // if the sensor senses something
   // and it's already on
   // should turn off
-  else if (analog_sig < THRESH) {
-    digitalWrite(DIGITAL_LED, LOW);
-    state = false;
-  }
+  /* else if (analog_sig < THRESH) { */
+  /*   digitalWrite(DIGITAL_LED, LOW); */
+  /*   state = false; */
+  /* } */
   
-   delay(10);
-  //digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-  //delay(1000);                       // wait for a second
-  //digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
- // delay(1000);                       // wait for a second
+   delay(DELAY);
+   time += DELAY;
+   prevVolume = volume;
 }
