@@ -1,145 +1,156 @@
-/*
-  Blink
+/**
+  This is the code I made for reading input from a (hopefully amplified)
+  microphone signal and processing the sound voltage input for detection
+  of the beat.
+  Upon detection of the music's beat, a color palette and a light pattern will be shown.
 
-  Turns an LED on for one second, then off for one second, repeatedly.
+  So far, the following color palettes are defined:
+  1) Random HSV color pattern
+  NOTE: I want to define a color palette based on the frequency of the music.
 
-  Most Arduinos have an on-board LED you can control. On the UNO, MEGA and ZERO
-  it is attached to digital pin 13, on MKR1000 on pin 6. LED_BUILTIN is set to
-  the correct LED pin independent of which board is used.
-  If you want to know what pin the on-board LED is connected to on your Arduino
-  model, check the Technical Specs of your board at:
-  https://www.arduino.cc/en/Main/Products
+  So far, the following light patterns are defined:
+  1) Each beat detected, a number of LEDs (UPDATE_LEDS), are updated. Each cycle they are shifted over a number (UPDATE_LEDS) pixels.
 
-  modified 8 May 2014
-  by Scott Fitzgerald
-  modified 2 Sep 2016
-  by Arturo Guadalupi
-  modified 8 Sep 2016
-  by Colby Newman
-
-  This example code is in the public domain.
-
-  http://www.arduino.cc/en/Tutorial/Blink
 */
-//#define DIGITAL_INPUT 3
 #include "FastLED.h"
+/*
+    Globals defined for the script
+*/
 #define DELAY 10
 #define UPDATE_LEDS 6
 #define NUM_LEDS 200
-#define COLOR_ORDER GRB
 #define LED_TYPE WS2812B
 #define BRIGHTNESS 64
 #define ANALOG A0
-#define LED 9
-#define DIGITAL_LED 8
-#define R_LIGHT 9
-#define G_LIGHT 10
-#define B_LIGHT 11
 #define THRESH 40
 #define DATAPIN 6
+
+/**
+    Variables defined to keep track of the current state
+*/
+// array holding CRGB values
 CRGB leds[NUM_LEDS];
-boolean trig = true;
-boolean state = true;
-float analog_sig;
+// variable to read in "volume" voltage values
+// This value should (hopefully in the future) amplified
+// avgVolume is supposed to be a running average to keep track of
+// dips in volume. Also, some songs are quieter than others
+float volume;
+float avgVolume = 0;
+float prevVolume = 0;
+// keep track of time the program is active for cool timing affects
+// right now I'm incrementing it by DELAY
 int time = 0;
 
+// variable to hold current rgb(hsv) value
+CRGB crgb = CRGB(0, 0, 0);
+
+// struct defining a color value
 struct color {
     int r;
     int g;
     int b;
 };
-
+// type alias for clarity
+// Also, variable defined to hold current rgb value
 typedef struct color Color;
-
 Color c;
+
+
+/*
+    This method takes a pointer to a Color variable
+    and procedes to set its values accordingly
+*/
 void setColor(Color *c, int r, int g, int b) {
     c->r = r;
     c->g = g;
     c->b = b;
 }
 
+/*
+    This method takes a pointer for a color
+    and sets its values to a random rgb value
+*/
 void randomColor(Color *c) {
     setColor(c, random8(), 255, random8());
 }
 
+/*
+    This method takes a color value and
+    inserts its details into an equivalent
+    CRGB pointer
+*/
 void crgbFromColor(CRGB *crgb, Color c) {
     // CRGB PURPLE = CHSV( HUE_PURPLE, 255, 255 );
     *crgb = CHSV(c.r, c.g, c.b);
 }
 
-void writeRGB(Color c) {
-    analogWrite(R_LIGHT, c.r);
-    analogWrite(G_LIGHT, c.g);
-    analogWrite(B_LIGHT, c.b);
-}
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-  // initialize digital pin LED_BUILTIN as an output.
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(ANALOG, INPUT);
-  pinMode(DIGITAL_LED, OUTPUT);
-  pinMode(R_LIGHT, OUTPUT);
-  pinMode(G_LIGHT, OUTPUT);
-  pinMode(B_LIGHT, OUTPUT);
-    setColor(&c, 0, 0, 0);
-//  pinMode(DIGITAL_INPUT, INPUT);
-  Serial.begin(9600);
-  FastLED.addLeds<LED_TYPE, DATAPIN>(leds, NUM_LEDS);
-  FastLED.setBrightness(BRIGHTNESS);
+    Serial.begin(9600);
 
-  for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = CRGB(0, 0, 0);
-  }
-  FastLED.show();
-  delay(1000);
+    // initialize ANALOG pin as pin that reads in microphone signal
+    pinMode(ANALOG, INPUT);
+
+    /*
+        Using the FastLED library, setup the WS2812B addressable
+        LED strip by defining what the LED_TYPE is (WS2812B), the DATAPIN that should talk to
+        as well as the number of LEDs on the strip
+    */
+    FastLED.addLeds<LED_TYPE, DATAPIN>(leds, NUM_LEDS);
+    FastLED.setBrightness(BRIGHTNESS);
+
+    // set an initial color value of white
+    setColor(&c, 0, 0, 0);
+
+    // load the initial color value into all LEDs
+    for (int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = CRGB(c.r, c.g, c.b);
+    }
+
+    // Light up the strip with new values
+    FastLED.show();
+
+
+    // wait some initial time
+    delay(5000);
 }
 
 
-CRGB crgb = CRGB(0, 0, 0);
-float avgVolume = 0;
-float volume;
-float prevVolume = 0;
 // the loop function runs over and over again forever
 void loop() {
-  for (int i = NUM_LEDS - 1; i >= UPDATE_LEDS; i--) {
-    leds[i] = leds[i - UPDATE_LEDS];
-  }
-  analog_sig = analogRead(ANALOG);
-  volume = analog_sig;
-  // update the average volume
-  avgVolume = (avgVolume + volume) / 2.0;
-  if (volume < avgVolume / 2.0 || volume < 15) {
-      volume = 0.0;
-  }
-  Serial.println(analog_sig);
-  // setting rgb values the same for now
-  writeRGB(c);
-  // if the sensor senses something and
-  // it's off initially
-  // should turn on
-  if (volume > THRESH) {
-    digitalWrite(DIGITAL_LED, HIGH);
-    randomColor(&c);
-//    analogWrite(LED, analog_sig);
-    crgbFromColor(&crgb, c);
-    state = true;
-    for (int i = 0; i < UPDATE_LEDS; i++) {
-      leds[i] = crgb;
+    // shift the LEDs by UPDATE_LEDS at the beginning of each cycle
+    for (int i = NUM_LEDS - 1; i >= UPDATE_LEDS; i--) {
+        leds[i] = leds[i - UPDATE_LEDS];
     }
-  }
-  FastLED.show();
+    // read current volume
+    volume = analogRead(ANALOG);
+    Serial.println(volume);
+
+    // update the average volume
+    avgVolume = (avgVolume + volume) / 2.0;
+    if (volume < avgVolume / 2.0 || volume < 15) {
+        volume = 0.0;
+    }
+
+    if (volume > THRESH) {
+        // write a random rgb(hsv) color into this Color variable
+        randomColor(&c);
+        // taking that color, translate it to CRGB value and store it in crgb
+        crgbFromColor(&crgb, c);
+
+        // cycle through UPDATE_LEDS and set their color
+        for (int i = 0; i < UPDATE_LEDS; i++) {
+            leds[i] = crgb;
+        }
+    }
+
+    // update the changes in the LED strip
+    FastLED.show();
 
 
-  // if the sensor senses something
-  // and it's already on
-  // should turn off
-  /* else if (analog_sig < THRESH) { */
-  /*   digitalWrite(DIGITAL_LED, LOW); */
-  /*   state = false; */
-  /* } */
-  
-   delay(DELAY);
-   time += DELAY;
-   prevVolume = volume;
+    // wait a bit and update time and prevVolume
+    delay(DELAY);
+    time += DELAY;
+    prevVolume = volume;
 }
