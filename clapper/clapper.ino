@@ -85,9 +85,9 @@ void randomColor(Color *c) {
     setColor(c, random8(), 255, random8());
 }
 
-void setNextColor(Color *c, char palette[]) {
+void setNextColor(Color *c, int palette) {
     switch(palette) {
-    case "random" :
+    case 1 :
         randomColor(c);
         break;
     default       :
@@ -159,7 +159,7 @@ void loop() {
     volume = analogRead(ANALOG);
     Serial.println(volume);
 
-    if (volume < avgVolume / 2.0 || volume < 15) {
+    if (volume < avgVolume / 2.0 || volume < 25) {
         volume = 0.0;
     } else {
         // update the average volume only if there is a meaningful volume
@@ -174,7 +174,7 @@ void loop() {
 
     // if there is a significant volume change
     // we only consider when the prevVolume is at most at the avgVolume level
-    if (volume - prevVolume > avgVolume - prevVolume && avgVolume - prevVolume > 0) {
+    if (volume > THRESH && volume - prevVolume > avgVolume - prevVolume && avgVolume - prevVolume > 0) {
         // update avgBump
         /* bumpCounter += 1; */
         /* updateAverage(&avgBump, volume - prevVolume, bumpCounter); */
@@ -186,7 +186,7 @@ void loop() {
         brightness = (int) (percentage * 255);
         FastLED.setBrightness(brightness);
         // write a random rgb(hsv) color into this Color variable
-        setNextColor(&c, "");
+        setNextColor(&c, 1);
         // taking that color, translate it to CRGB value and store it in crgb
         crgbFromColor(&crgb, c);
 
@@ -194,10 +194,16 @@ void loop() {
         for (int i = 0; i < UPDATE_LEDS; i++) {
             leds[i] = crgb;
         }
-    }
 
     // update the changes in the LED strip
     FastLED.show();
+    } 
+    /* else { */
+    /*       for (int i = 0; i < UPDATE_LEDS; i++) { */
+    /*           leds[i] = CRGB::Black; */
+    /*       } */
+    /* } */
+    // update the changes in the LED strip
 
 
     // wait a bit and update time and prevVolume
