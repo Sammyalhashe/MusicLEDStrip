@@ -24,6 +24,7 @@
 #define ANALOG A0
 #define THRESH 40
 #define DATAPIN 6
+#define FACTOR 10 // constant defines how "quickly" a running average "catches up to a new value"
 
 /**
     Variables defined to keep track of the current state
@@ -34,9 +35,13 @@ CRGB leds[NUM_LEDS];
 // This value should (hopefully in the future) amplified
 // avgVolume is supposed to be a running average to keep track of
 // dips in volume. Also, some songs are quieter than others
+// I consider a volume of <= 15 effectively zero. I am thus initially
+// setting the max volume to 15
 float volume;
+float maxVol = 15;
 float avgVolume = 0;
 float prevVolume = 0;
+int counter = 0; // used for updating the average (number you divide by)
 // keep track of time the program is active for cool timing affects
 // right now I'm incrementing it by DELAY
 int time = 0;
@@ -83,6 +88,10 @@ void crgbFromColor(CRGB *crgb, Color c) {
     // CRGB PURPLE = CHSV( HUE_PURPLE, 255, 255 );
     *crgb = CHSV(c.r, c.g, c.b);
 }
+void updateAverage(float *average, float newVal, int count) {
+    float old = *average;
+    *average = old + (newVal - old)/(min(count, FACTOR));
+}
 
 
 // the setup function runs once when you press reset or power the board
@@ -127,10 +136,13 @@ void loop() {
     volume = analogRead(ANALOG);
     Serial.println(volume);
 
-    // update the average volume
-    avgVolume = (avgVolume + volume) / 2.0;
     if (volume < avgVolume / 2.0 || volume < 15) {
         volume = 0.0;
+    } else {
+        // update the average volume only if there is a meaningful volume
+        counter += 1;
+        updateAverage(&avgVolume, volume, counter);
+        /* avgVolume = (avgVolume + volume) / 2.0; */
     }
 
     if (volume > THRESH) {
