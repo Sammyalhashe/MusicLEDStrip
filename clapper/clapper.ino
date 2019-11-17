@@ -22,7 +22,7 @@
 #define LED_TYPE WS2812B
 #define BRIGHTNESS 64
 #define ANALOG A0
-#define THRESH 40
+#define THRESH 35
 #define DATAPIN 6
 #define FACTOR 10 // constant defines how "quickly" a running average "catches up to a new value"
 
