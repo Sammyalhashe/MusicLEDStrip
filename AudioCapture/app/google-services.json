@@ -1,0 +1,83 @@
+{
+  "project_info": {
+    "project_number": "1078009505406",
+    "firebase_url": "https://arduinohandler.firebaseio.com",
+    "project_id": "arduinohandler",
+    "storage_bucket": "arduinohandler.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1078009505406:android:393521cda5c8b6889e1a2f",
+        "android_client_info": {
+          "package_name": "com.example.audiocapture"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1078009505406-gauh9s73lnbpppigrnflu3f65mu7ub5j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQ7LK8JFK9NPX5_l9FFSnncNFZB9AO40k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1078009505406-gauh9s73lnbpppigrnflu3f65mu7ub5j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1078009505406-21n9b1soc3lejot78tr9jeth3gldjqvv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.sammyalhashemi.dbApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1078009505406:android:d3aa6813bc03bbfb",
+        "android_client_info": {
+          "package_name": "com.sammyalhashemi.dbApp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1078009505406-gauh9s73lnbpppigrnflu3f65mu7ub5j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQ7LK8JFK9NPX5_l9FFSnncNFZB9AO40k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1078009505406-gauh9s73lnbpppigrnflu3f65mu7ub5j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1078009505406-21n9b1soc3lejot78tr9jeth3gldjqvv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.sammyalhashemi.dbApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
