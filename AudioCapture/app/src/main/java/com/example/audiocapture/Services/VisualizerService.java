@@ -21,6 +21,7 @@ import com.koushikdutta.async.http.WebSocket;
 import com.koushikdutta.async.http.server.AsyncHttpServer;
 import com.koushikdutta.async.http.server.AsyncHttpServerRequest;
 
+import java.lang.ref.WeakReference;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -32,8 +33,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.reactivex.Observable;
+import io.reactivex.subjects.BehaviorSubject;
+import io.reactivex.subjects.Subject;
 
-public class VisualizerService extends Service {
+
+public class VisualizerService extends Service implements Visualizer.OnDataCaptureListener {
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     private static final String TAG = "VISUALIZER_SERVICE :: ";
     private final IBinder binder = new VisualizerBinder();
@@ -48,42 +53,108 @@ public class VisualizerService extends Service {
     private byte [] mRawNullData = new byte[0];
     private int [] mFormattedNullData = new int[0];
     private long lastCapturedTimeMS;
+    private BehaviorSubject<byte[]> waveformSubject = BehaviorSubject.create();
 
 
     private AsyncTask mBackgroundTask;
     private AsyncHttpServer httpServer;
     private List<WebSocket> webSockets;
 
-    private class BackgroundTask extends AsyncTask<Void, Void, Void> {
+    /**
+     * Method called when a new waveform capture is available.
+     * <p>Data in the waveform buffer is valid only within the scope of the callback.
+     * Applications which need access to the waveform data after returning from the callback
+     * should make a copy of the data instead of holding a reference.
+     *
+     * @param visualizer   Visualizer object on which the listener is registered.
+     * @param waveform     array of bytes containing the waveform representation.
+     * @param samplingRate sampling rate of the visualized audio.
+     */
+    @Override
+    public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
+        waveformSubject.onNext(waveform);
+        for (WebSocket socket: webSockets) {
+            socket.send(waveform);
+        }
+    }
+
+    /**
+     * Method called when a new frequency capture is available.
+     * <p>Data in the fft buffer is valid only within the scope of the callback.
+     * Applications which need access to the fft data after returning from the callback
+     * should make a copy of the data instead of holding a reference.
+     *
+     * <p>In order to obtain magnitude and phase values the following formulas can
+     * be used:
+     * <pre class="prettyprint">
+     *       for (int i = 0; i &lt; fft.size(); i += 2) {
+     *           float magnitude = (float)Math.hypot(fft[i], fft[i + 1]);
+     *           float phase = (float)Math.atan2(fft[i + 1], fft[i]);
+     *       }</pre>
+     *
+     * @param visualizer   Visualizer object on which the listener is registered.
+     * @param fft          array of bytes containing the frequency representation.
+     *                     The fft array only contains the first half of the actual
+     *                     FFT spectrum (frequencies up to Nyquist frequency), exploiting
+     *                     the symmetry of the spectrum. For each frequencies bin <code>i</code>:
+     *                     <ul>
+     *                     <li>the element at index <code>2*i</code> in the array contains
+     *                     the real part of a complex number,</li>
+     *                     <li>the element at index <code>2*i+1</code> contains the imaginary
+     *                     part of the complex number.</li>
+     *                     </ul>
+     * @param samplingRate sampling rate of the visualized audio.
+     */
+    @Override
+    public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
+        // Noop for now
+    }
+
+    public Observable<byte[]> getWaveformObservable() {
+        // in RxJava2 they renamed asObservable() to hide() for some reason
+        return waveformSubject.hide();
+    }
+
+    private static class BackgroundTask extends AsyncTask<Void, Void, Void> {
+
+        private WeakReference<VisualizerService> serviceWeakReference;
+        private VisualizerService serviceReference;
+
+        BackgroundTask(VisualizerService context) {
+            this.serviceWeakReference = new WeakReference<>(context);
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            serviceReference = serviceWeakReference.get();
+        }
 
         @Override
         protected Void doInBackground(Void... voids) {
-            int[] res;
-            byte[] res3;
-            List<Integer> res2;
-            Map<String, List<Integer>> map = new HashMap<>();
-            Log.i(TAG, "Inside service");
-            while (isCapturing) {
-                res = getFormattedData(1, 1);
-                res3 = getRawData();
+            /*
+            if (serviceReference != null) {
+                int[] res;
+                byte[] res3;
+                List<Integer> res2;
+                Log.i(TAG, "Inside service");
+                while (serviceReference.isCapturing) {
+                    res = serviceReference.getFormattedData(1, 1);
+                    res3 = serviceReference.getRawData();
 
-                res2 = new ArrayList<>(res.length);
-                for (int j: res) {
-                    res2.add(j);
+                    res2 = new ArrayList<>(res.length);
+                    for (int j : res) {
+                        res2.add(j);
+                    }
+
+                    for (WebSocket socket : serviceReference.webSockets) {
+                        socket.send(res3);
+                    }
+
+                    SystemClock.sleep(MAX_IDLE_TIME_MS);
                 }
-                map.put("arr", res2);
-                /*
-                db.collection("AudioData")
-                        .document("data")
-                        .set(map);
-                 */
-
-                for (WebSocket socket: webSockets) {
-                    socket.send(res3);
-                }
-
-                SystemClock.sleep(MAX_IDLE_TIME_MS);
             }
+            */
             return null;
         }
     }
@@ -158,6 +229,7 @@ public class VisualizerService extends Service {
                 // saw this piece of code on a google repository
                 // my guess is that it just intitially disables
                 // audio capture - as we don't need it now
+                mVisualizer.setDataCaptureListener(this, Visualizer.getMaxCaptureRate(), true, false);
                 if (mVisualizer.getEnabled()) {
                     mVisualizer.setEnabled(isCapturing);
                 }
@@ -194,7 +266,7 @@ public class VisualizerService extends Service {
 
     public void streamData() {
         Log.i(TAG, "streamData()");
-        this.mBackgroundTask = new BackgroundTask().execute();
+        this.mBackgroundTask = new BackgroundTask(this).execute();
     }
 
     public boolean stopStreaming() {
@@ -264,7 +336,7 @@ public class VisualizerService extends Service {
     }
 
     /**
-     * This innner class is a local binder that allows the "client"
+     * This inner class is a local binder that allows the "client"
      * Activity to interact with the "server" Service
      */
     public class VisualizerBinder extends Binder {
