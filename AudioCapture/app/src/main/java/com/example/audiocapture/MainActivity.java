@@ -7,17 +7,21 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 
 import com.example.audiocapture.Components.VisualizerView;
 import com.example.audiocapture.Services.VisualizerService;
 import com.example.audiocapture.WaveformRenderer.SimpleWaveformRendererFactory;
+import com.example.audiocapture.databinding.ActivityMainBinding;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.databinding.BindingAdapter;
+import androidx.databinding.DataBindingUtil;
 
 import android.os.IBinder;
 import android.util.Log;
@@ -30,6 +34,7 @@ import java.util.List;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.functions.BiFunction;
 import io.reactivex.observers.DisposableObserver;
 
 import static androidx.core.app.ActivityCompat.requestPermissions;
@@ -42,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
     /** Views */
     private VisualizerView visualizerView;
+    ActivityMainBinding binding;
 
     /**
      * private class variables that are related to the Visualizer service
@@ -50,6 +56,8 @@ public class MainActivity extends AppCompatActivity {
     private VisualizerService visualizerService;
     private boolean mBound = false;
     private boolean mSampling = false;
+    private boolean sampleWaveform = true;
+    private boolean sampleFFT = true;
 
     /** RxJava */
     //
@@ -80,13 +88,19 @@ public class MainActivity extends AppCompatActivity {
                 requestPermissions(permissions.toArray(new String[permissions.size()]), PackageManager.PERMISSION_GRANTED);
             }
 
+            // Setting up Binding
+            binding = DataBindingUtil.setContentView(this, R.layout.activity_main);
+            binding.setSamplingFFT(this.sampleFFT);
+            binding.setSamplingWaveform(this.sampleWaveform);
+            binding.setLifecycleOwner(this);
+
             /**
              *  Initialize the Visualizer view which will display the waveform data
              *  that the visualizer service sends back through RxJava
              */
             this.visualizerView = (VisualizerView) findViewById(R.id.waveform_view);
             SimpleWaveformRendererFactory rendererFactory = new SimpleWaveformRendererFactory();
-            this.visualizerView.setWaveformRenderer(rendererFactory.createSimpleWaveformRenderer(Color.DKGRAY, Color.GREEN));
+            this.visualizerView.setWaveformRenderer(rendererFactory.createSimpleWaveformRenderer(this, Color.DKGRAY, Color.GREEN, Color.BLUE));
         }
 
         /**
@@ -96,14 +110,53 @@ public class MainActivity extends AppCompatActivity {
          * the main threa.
          */
         FloatingActionButton fab = findViewById(R.id.fab);
+        FloatingActionButton fab1 = findViewById(R.id.fab_wave);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
+                if (sampleFFT) {
+                    Snackbar.make(view, getResources().getText(R.string.main_stopSampleFFT), Snackbar.LENGTH_LONG)
+                            .setAction(getResources().getString(R.string.main_sandboxAction), null).show();
+                } else {
+                    Snackbar.make(view, getResources().getText(R.string.main_sampleFFT), Snackbar.LENGTH_LONG)
+                            .setAction(getResources().getString(R.string.main_sandboxAction), null).show();
+                }
+                sampleFFT = !sampleFFT;
+                Log.i(TAG, getResources().getString(R.string.main_FFTOnClickFAB) + sampleFFT);
+                binding.setSamplingFFT(sampleFFT);
+            }
+        });
+
+        fab1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (sampleWaveform) {
+                    Snackbar.make(v, getResources().getText(R.string.main_stopSampleWave), Snackbar.LENGTH_LONG)
+                            .setAction(getResources().getString(R.string.main_sandboxAction), null).show();
+                } else {
+                    Snackbar.make(v, getResources().getText(R.string.main_sampleWave), Snackbar.LENGTH_LONG)
+                            .setAction(getResources().getString(R.string.main_sandboxAction), null).show();
+                }
+                sampleWaveform = !sampleWaveform;
+                Log.i(TAG, getResources().getString(R.string.main_waveformOnClickFAB) + sampleWaveform);
+                binding.setSamplingWaveform(sampleWaveform);
             }
         });
     }
+
+    /**
+     * bindSrcCompat()
+     * Binds to an xml attribute and "intercepts" an attempt to set a value to that
+     * attribute.
+     * I need to do this because it was erroring out on basic assignment for my FABs.
+     * @param view
+     * @param drawable
+     */
+    @BindingAdapter("app:srcCompat")
+    public static void bindSrcCompat(FloatingActionButton view, Drawable drawable) {
+        view.setImageDrawable(drawable);
+    }
+
 
     /**
      * onStart()
@@ -225,8 +278,27 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, String.format("%s", mBound));
         // add the Observable subscription to Disposables
         disposables.add(visualizerService.getWaveformObservable()
+                .zipWith(visualizerService.getFFTObservable(), new BiFunction<byte[], byte[], byte[][]>() {
+                    @Override
+                    public byte[][] apply(byte[] bytes, byte[] bytes2) throws Exception {
+                        byte[] w1;
+                        byte[] w2;
+                        if (!sampleWaveform) {
+                            w1 = null;
+                        } else {
+                            w1 = bytes;
+                        }
+
+                        if (!sampleFFT) {
+                            w2 = null;
+                        } else {
+                            w2 = bytes2;
+                        }
+                        return new byte[][]{w1, w2};
+                    }
+                })
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableObserver<byte[]>() {
+                .subscribeWith(new DisposableObserver<byte[][]>() {
 
                     /**
                      * Provides the Observer with a new item to observe.
@@ -239,7 +311,7 @@ public class MainActivity extends AppCompatActivity {
                      * @param bytes the item emitted by the Observable
                      */
                     @Override
-                    public void onNext(byte[] bytes) {
+                    public void onNext(byte[][] bytes) {
                         // set the {visualizerView}'s waveform to display
                         if (visualizerView != null) {
                             visualizerView.setWaveform(bytes);

@@ -9,6 +9,13 @@
     <string name="main_visConnected">VisualizerService Connected</string>
     <string name="main_visDisconnected">VisualizerService Disconnected</string>
     <string name="main_sampleButtonClicked">Sampling Button Clicked</string>
+    <string name="main_sampleFFT">Sampling FFT</string>
+    <string name="main_stopSampleFFT">Stopping Sampling FFT</string>
+    <string name="main_sampleWave">Sampling Waveform</string>
+    <string name="main_stopSampleWave">Stopping Sampling Waveform</string>
+    <string name="main_waveformOnClickFAB">onClick: sampleWaveform= </string>
+    <string name="main_FFTOnClickFAB">onClick: sampleFFT= </string>
+    <string name="main_sandboxAction">Action</string>
 
 
     <!-- Visualizer Service -->
@@ -16,4 +23,23 @@
     <string name="vis_cstor_unsupportedop">Visualizer cstor UnsupportedOperationException</string>
     <string name="vis_cstor_illegalstate">Visualizer cstor IllegalStateException</string>
     <string name="vis_cstor_runtime">Visualizer cstor RuntimeException</string>
+    <string name="vis_onWaveformCapture">onWaveFormDataCapture: </string>
+    <string name="vis_sendingSockets">Sending Sockets</string>
+    <string name="vis_onFFTDataCapture">onFftDataCapture: </string>
+    <string name="vis_onBind">onBind </string>
+    <string name="vis_ipIs">ip address is: %s</string>
+    <string name="vis_AudioData">AudioData</string>
+    <string name="vis_IpDocumentPath">ipi</string>
+    <string name="vis_ipFirebaseAddressField">address</string>
+    <string name="vis_websocketRegexPath">/ws</string>
+    <string name="vis_streamData">streamData()</string>
+
+    <!-- SimpleWaveformRenderer -->
+    <string name="simpleWR_renderWaveform">renderWaveform</string>
+    <string name="simpleWR_renderBlank">renderBlank</string>
+
+    <!-- VisualizerView -->
+    <string name="visView_setWaveformRenderer">setWaveformRenderer</string>
+    <string name="visView_onDraw">onDraw</string>
+    <string name="visView_setWaveform">setWaveform</string>
 </resources>

@@ -53,8 +53,10 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
     private byte [] mRawNullData = new byte[0];
     private int [] mFormattedNullData = new int[0];
     private long lastCapturedTimeMS;
-    private BehaviorSubject<byte[]> waveformSubject = BehaviorSubject.create();
 
+    // Subjects created to communicate back to the MainActivity
+    private BehaviorSubject<byte[]> waveformSubject = BehaviorSubject.create();
+    private BehaviorSubject<byte[]> fftSubject = BehaviorSubject.create();
 
     private AsyncTask mBackgroundTask;
     private AsyncHttpServer httpServer;
@@ -72,8 +74,10 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
      */
     @Override
     public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
+        Log.i(TAG, getResources().getString(R.string.vis_onWaveformCapture) + waveform.length);
         waveformSubject.onNext(waveform);
         for (WebSocket socket: webSockets) {
+            Log.i(TAG, getResources().getString(R.string.vis_sendingSockets));
             socket.send(waveform);
         }
     }
@@ -107,27 +111,40 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
      */
     @Override
     public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
-        // Noop for now
+        Log.i(TAG, getResources().getString(R.string.vis_onFFTDataCapture) + fft.length);
+        fftSubject.onNext(fft);
     }
 
+    /**
+     * Returns the waveform subject as an Observable for the Main Activity to read from
+     * @return {Observable<byte[]>}
+     */
     public Observable<byte[]> getWaveformObservable() {
         // in RxJava2 they renamed asObservable() to hide() for some reason
         return waveformSubject.hide();
     }
+    /**
+     * Returns the fft subject as an Observable for the Main Activity to read from
+     * @return {Observable<byte[]>}
+     */
+    public Observable<byte[]> getFFTObservable() {
+        // in RxJava2 they renamed asObservable() to hide() for some reason
+        return fftSubject.hide();
+    }
 
     private static class BackgroundTask extends AsyncTask<Void, Void, Void> {
 
-        private WeakReference<VisualizerService> serviceWeakReference;
-        private VisualizerService serviceReference;
+        // private WeakReference<VisualizerService> serviceWeakReference;
+        // private VisualizerService serviceReference;
 
         BackgroundTask(VisualizerService context) {
-            this.serviceWeakReference = new WeakReference<>(context);
+            // this.serviceWeakReference = new WeakReference<>(context);
         }
 
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            serviceReference = serviceWeakReference.get();
+            // serviceReference = serviceWeakReference.get();
         }
 
         @Override
@@ -176,14 +193,14 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        Log.i(TAG, "onBind");
-        Log.i(TAG, String.format("ip address: %s", 1));
+        Log.i(TAG, getResources().getString(R.string.vis_onBind));
         // get devices ip address and stream it to firebase for synchronization
         String ip = getDeviceWifiAddress();
+        Log.i(TAG, String.format(getResources().getString(R.string.vis_ipIs), ip));
         Map<String, String> ipMap = new HashMap<>();
-        ipMap.put("address", ip);
-        db.collection("AudioData")
-                .document("ipi")
+        ipMap.put(getResources().getString(R.string.vis_ipFirebaseAddressField), ip);
+        db.collection(getResources().getString(R.string.vis_AudioData))
+                .document(getResources().getString(R.string.vis_IpDocumentPath))
                 .set(ipMap);
         // initialize websocket
         webSockets = new ArrayList<>();
@@ -196,7 +213,7 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
         });
         httpServer.listen(AsyncServer.getDefault(), 5000);
 
-        httpServer.websocket("/ws", new AsyncHttpServer.WebSocketRequestCallback() {
+        httpServer.websocket(getResources().getString(R.string.vis_websocketRegexPath), new AsyncHttpServer.WebSocketRequestCallback() {
             @Override
             public void onConnected(WebSocket webSocket, AsyncHttpServerRequest request) {
                 webSocket.send("Hello");
@@ -227,9 +244,9 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
 
             if (mVisualizer != null) {
                 // saw this piece of code on a google repository
-                // my guess is that it just intitially disables
+                // my guess is that it just initially disables
                 // audio capture - as we don't need it now
-                mVisualizer.setDataCaptureListener(this, Visualizer.getMaxCaptureRate(), true, false);
+                mVisualizer.setDataCaptureListener(this, Visualizer.getMaxCaptureRate(), true, true);
                 if (mVisualizer.getEnabled()) {
                     mVisualizer.setEnabled(isCapturing);
                 }
@@ -265,7 +282,7 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
     }
 
     public void streamData() {
-        Log.i(TAG, "streamData()");
+        Log.i(TAG, getResources().getString(R.string.vis_streamData));
         this.mBackgroundTask = new BackgroundTask(this).execute();
     }
 
