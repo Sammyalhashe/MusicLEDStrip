@@ -52,6 +52,12 @@ int brightness = BRIGHTNESS;
 // right now I'm incrementing it by DELAY
 int time = 0;
 
+enum PATTERN {
+    SHIFT,
+    CENTER_OUT,
+    BACKWARDS
+}
+
 // variable to hold current rgb(hsv) value
 CRGB crgb = CRGB(0, 0, 0);
 
@@ -116,6 +122,17 @@ void updateAverage(float *average, float newVal, int count) {
     *average = old + (newVal - old)/(min(count, FACTOR));
 }
 
+void modifyLightArray(CRGB *arr, PATTERN pattern) {
+    switch(pattern) {
+    case SHIFT:
+        // shift the LEDs by UPDATE_LEDS at the beginning of each cycle
+        for (int i = NUM_LEDS - 1; i >= UPDATE_LEDS; i--) {
+            leds[i] = leds[i - UPDATE_LEDS];
+        }
+        break;
+    }
+
+}
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -149,12 +166,12 @@ void setup() {
 }
 
 
+
 // the loop function runs over and over again forever
 void loop() {
-    // shift the LEDs by UPDATE_LEDS at the beginning of each cycle
-    for (int i = NUM_LEDS - 1; i >= UPDATE_LEDS; i--) {
-        leds[i] = leds[i - UPDATE_LEDS];
-    }
+
+    modifyLightArray(leds, SHIFT);
+
     // read current volume
     volume = analogRead(ANALOG);
     Serial.println(volume);
@@ -195,9 +212,9 @@ void loop() {
             leds[i] = crgb;
         }
 
-    // update the changes in the LED strip
-    FastLED.show();
-    } 
+        // update the changes in the LED strip
+        FastLED.show();
+    }
     /* else { */
     /*       for (int i = 0; i < UPDATE_LEDS; i++) { */
     /*           leds[i] = CRGB::Black; */

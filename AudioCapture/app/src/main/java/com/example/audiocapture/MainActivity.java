@@ -18,6 +18,7 @@ import com.example.audiocapture.databinding.ActivityMainBinding;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.databinding.BindingAdapter;
@@ -157,6 +158,20 @@ public class MainActivity extends AppCompatActivity {
         view.setImageDrawable(drawable);
     }
 
+    private void createConnectionWithBoundService() {
+        Intent intent = new Intent(this, VisualizerService.class);
+        bindService(intent, connection, Context.BIND_AUTO_CREATE);
+    }
+
+    /**
+     *
+     * @param outState
+     */
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean(getResources().getString(R.string.main_isCapturing), this.mSampling);
+    }
 
     /**
      * onStart()
@@ -168,8 +183,22 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         Log.d(TAG, getResources().getString(R.string.main_onStart));
-        Intent intent = new Intent(this, VisualizerService.class);
-        bindService(intent, connection, Context.BIND_AUTO_CREATE);
+        this.createConnectionWithBoundService();
+    }
+
+    /**
+     *
+     * @param savedInstanceState
+     */
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        Log.i(TAG, "onRestoreInstanceState: ");
+        boolean isCapturing = savedInstanceState.getBoolean(getResources().getString(R.string.main_isCapturing));
+        // this.createConnectionWithBoundService();
+        if (isCapturing) {
+            this.setupCollection();
+        }
     }
 
     /**
@@ -256,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
         public void onServiceDisconnected(ComponentName componentName) {
             Log.i(TAG, getResources().getString(R.string.main_visDisconnected));
             mBound = false;
-            visualizerService = null;
+            // visualizerService = null;
         }
     };
 
@@ -276,76 +305,85 @@ public class MainActivity extends AppCompatActivity {
     public void startSampling(View view) {
         Log.i(TAG, getResources().getString(R.string.main_sampleButtonClicked));
         Log.i(TAG, String.format("%s", mBound));
-        // add the Observable subscription to Disposables
-        disposables.add(visualizerService.getWaveformObservable()
-                .zipWith(visualizerService.getFFTObservable(), new BiFunction<byte[], byte[], byte[][]>() {
-                    @Override
-                    public byte[][] apply(byte[] bytes, byte[] bytes2) throws Exception {
-                        byte[] w1;
-                        byte[] w2;
-                        if (!sampleWaveform) {
-                            w1 = null;
-                        } else {
-                            w1 = bytes;
+        this.setupCollection();
+    }
+
+    private void setupCollection() {
+        Log.i(TAG, "setupCollection: mSampling=" + mSampling);
+        Log.i(TAG, "setupCollection: mBound=" + mBound);
+        if (visualizerService != null) {
+            // add the Observable subscription to Disposables
+            disposables.add(visualizerService.getWaveformObservable()
+                    .zipWith(visualizerService.getFFTObservable(), new BiFunction<byte[], byte[], byte[][]>() {
+                                                                  @Override
+                                                                  public byte[][] apply(byte[] bytes, byte[] bytes2) throws Exception {
+                            byte[] w1;
+                            byte[] w2;
+                            if (!sampleWaveform) {
+                                w1 = null;
+                            } else {
+                                w1 = bytes;
+                            }
+
+                            if (!sampleFFT) {
+                                w2 = null;
+                            } else {
+                                w2 = bytes2;
+                            }
+                            return new byte[][]{w1, w2};
+                    }
+                    })
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribeWith(new DisposableObserver<byte[][]>() {
+
+                        /**
+                         * Provides the Observer with a new item to observe.
+                         * <p>
+                         * The {@link Observable} may call this method 0 or more times.
+                         * <p>
+                         * The {@code Observable} will not call this method again after it calls either {@link #onComplete} or
+                         * {@link #onError}.
+                         *
+                         * @param bytes the item emitted by the Observable
+                         */
+                        @Override
+                        public void onNext(byte[][] bytes) {
+                            Log.i(TAG, "onNext: ");
+                            // set the {visualizerView}'s waveform to display
+                            if (visualizerView != null) {
+                                visualizerView.setWaveform(bytes);
+                                                                     }
                         }
 
-                        if (!sampleFFT) {
-                            w2 = null;
-                        } else {
-                            w2 = bytes2;
+                        /**
+                         * Notifies the Observer that the {@link Observable} has experienced an error condition.
+                         * <p>
+                         * If the {@link Observable} calls this method, it will not thereafter call {@link #onNext} or
+                         * {@link #onComplete}.
+                         *
+                         * @param e the exception encountered by the Observable
+                         */
+                        @Override
+                        public void onError(Throwable e) {
+                            Log.i(TAG, "onError: ");
                         }
-                        return new byte[][]{w1, w2};
-                    }
-                })
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableObserver<byte[][]>() {
 
-                    /**
-                     * Provides the Observer with a new item to observe.
-                     * <p>
-                     * The {@link Observable} may call this method 0 or more times.
-                     * <p>
-                     * The {@code Observable} will not call this method again after it calls either {@link #onComplete} or
-                     * {@link #onError}.
-                     *
-                     * @param bytes the item emitted by the Observable
-                     */
-                    @Override
-                    public void onNext(byte[][] bytes) {
-                        // set the {visualizerView}'s waveform to display
-                        if (visualizerView != null) {
-                            visualizerView.setWaveform(bytes);
+                        /**
+                         * Notifies the Observer that the {@link Observable} has finished sending push-based notifications.
+                         * <p>
+                         * The {@link Observable} will not call this method if it calls {@link #onError}.
+                         */
+                        @Override
+                        public void onComplete() {
+
                         }
-                    }
-
-                    /**
-                     * Notifies the Observer that the {@link Observable} has experienced an error condition.
-                     * <p>
-                     * If the {@link Observable} calls this method, it will not thereafter call {@link #onNext} or
-                     * {@link #onComplete}.
-                     *
-                     * @param e the exception encountered by the Observable
-                     */
-                    @Override
-                    public void onError(Throwable e) {
-
-                    }
-
-                    /**
-                     * Notifies the Observer that the {@link Observable} has finished sending push-based notifications.
-                     * <p>
-                     * The {@link Observable} will not call this method if it calls {@link #onError}.
-                     */
-                    @Override
-                    public void onComplete() {
-
-                    }
-                }));
-        // request VisualizerService to start collecting audiodata
-        // NOTE: this data goes to both {websockets, back here to the visualizerView to display}
-        if (mBound && !mSampling) mSampling = visualizerService.startCapturingAudio();
-        if (mSampling) {
-            visualizerService.streamData();
+                    }));
+            // request VisualizerService to start collecting audiodata
+            // NOTE: this data goes to both {websockets, back here to the visualizerView to display}
+            if (mBound && !mSampling) mSampling = visualizerService.startCapturingAudio();
+            if (mSampling) {
+                visualizerService.streamData();
+            }
         }
     }
 }

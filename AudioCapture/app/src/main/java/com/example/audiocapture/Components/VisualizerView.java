@@ -61,7 +61,7 @@ public class VisualizerView extends View {
     }
 
     public void setWaveform(byte[][] waveform) {
-        Log.i(TAG, getResources().getString(R.string.visView_setWaveform));
+        setWillNotDraw(false);
         // We have to make a copy as the waveform data is
         // supposedly only valid within the scope of a waveform callback
         this.waveform = Arrays.copyOf(waveform, waveform.length);

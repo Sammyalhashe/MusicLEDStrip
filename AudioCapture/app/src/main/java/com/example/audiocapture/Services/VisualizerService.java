@@ -204,28 +204,39 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
                 .set(ipMap);
         // initialize websocket
         webSockets = new ArrayList<>();
-        httpServer = new AsyncHttpServer();
-        httpServer.setErrorCallback(new CompletedCallback() {
-            @Override
-            public void onCompleted(Exception ex) {
-                Log.e(TAG, String.format("%s", ex));
-            }
-        });
-        httpServer.listen(AsyncServer.getDefault(), 5000);
+        try {
+            httpServer = new AsyncHttpServer();
+            httpServer.setErrorCallback(new CompletedCallback() {
+                @Override
+                public void onCompleted(Exception ex) {
+                    Log.e(TAG, String.format("%s", ex));
+                }
+            });
+            httpServer.listen(AsyncServer.getDefault(), 5000);
 
-        httpServer.websocket(getResources().getString(R.string.vis_websocketRegexPath), new AsyncHttpServer.WebSocketRequestCallback() {
-            @Override
-            public void onConnected(WebSocket webSocket, AsyncHttpServerRequest request) {
-                webSocket.send("Hello");
-                webSockets.add(webSocket);
-            }
-        });
+            httpServer.websocket(getResources().getString(R.string.vis_websocketRegexPath), new AsyncHttpServer.WebSocketRequestCallback() {
+                @Override
+                public void onConnected(WebSocket webSocket, AsyncHttpServerRequest request) {
+                    webSockets.add(webSocket);
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "onBind: ", e);
+        }
+
 
         visInitialized = this.initializeVisualizer();
         return binder;
     }
 
+    @Override
+    public boolean onUnbind(Intent intent) {
+        httpServer.stop();
+        return super.onUnbind(intent);
+    }
+
     private boolean initializeVisualizer() {
+        Log.i(TAG, "initializeVisualizer: initializing");
         int[] range = Visualizer.getCaptureSizeRange();
         int maxSize = range[1];
         mRawAudioData = new byte[maxSize];

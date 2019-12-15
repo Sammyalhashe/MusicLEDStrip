@@ -16,6 +16,7 @@
     <string name="main_waveformOnClickFAB">onClick: sampleWaveform= </string>
     <string name="main_FFTOnClickFAB">onClick: sampleFFT= </string>
     <string name="main_sandboxAction">Action</string>
+    <string name="main_isCapturing">isCapturing</string>
 
 
     <!-- Visualizer Service -->
