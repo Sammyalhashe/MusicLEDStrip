@@ -130,6 +130,23 @@ void modifyLightArray(CRGB *arr, PATTERN pattern) {
             leds[i] = leds[i - UPDATE_LEDS];
         }
         break;
+    case CENTER_OUT:
+        /*
+        for i in range(0, n // 2 - 1 - UPDATE_LEDS // 2):
+            test[i] = test[i + UPDATE_LEDS // 2]
+        for i in range(n - UPDATE_LEDS // 2 - 1, n // 2, -1):
+            test[i + UPDATE_LEDS // 2] = test[i]
+        */
+        int NUM_LEDS_HALF = (int) (NUM_LEDS / 2);
+        int UPDATE_LEDS_HALF = (int)(UPDATE_LEDS / 2);
+        for (int i = 0; i < (int) (NUM_LEDS_HALF - 1 - UPDATE_LEDS_HALF); i++) {
+            // center-out left
+            leds[i] = leds[i + UPDATE_LEDS_HALF];
+        }
+        for (int i = NUM_LEDS - UPDATE_LEDS_HALF - 1; i > NUM_LEDS_HALF; i--) {
+            // center-out right
+            leds[i + UPDATE_LEDS_HALF] = leds[i];
+        }
     }
 
 }
