@@ -17,8 +17,9 @@
     Globals defined for the script
 */
 #define DELAY 10
+#define PATTERN_BUTTON 12
 #define UPDATE_LEDS 6
-#define NUM_LEDS 200
+#define NUM_LEDS 215
 #define LED_TYPE WS2812B
 #define BRIGHTNESS 64
 #define ANALOG A0
@@ -41,6 +42,9 @@ float volume;
 float maxVol = 15;
 float avgVolume = 0;
 float prevVolume = 0;
+int patternState = LOW;
+int prevPatternState = LOW;
+int actualButtonState = LOW;
 // the average "difference" that would be large enough to cause a trigger
 // I'm thinking about using this to set brightness
 float avgBump = 0;
@@ -57,6 +61,8 @@ enum PATTERN {
     CENTER_OUT,
     BACKWARDS
 };
+
+PATTERN pattern;
 
 // variable to hold current rgb(hsv) value
 CRGB crgb = CRGB(0, 0, 0);
@@ -154,9 +160,14 @@ void modifyLightArray(CRGB *leds, PATTERN pattern) {
 // the setup function runs once when you press reset or power the board
 void setup() {
     Serial.begin(9600);
+    
+    /* pattern = CENTER_OUT; */
 
     // initialize ANALOG pin as pin that reads in microphone signal
     pinMode(ANALOG, INPUT);
+
+    // setup pattern button
+    pinMode(PATTERN_BUTTON, INPUT);
 
     /*
         Using the FastLED library, setup the WS2812B addressable
@@ -187,7 +198,31 @@ void setup() {
 // the loop function runs over and over again forever
 void loop() {
 
-    modifyLightArray(leds, SHIFT);
+    patternState = digitalRead(PATTERN_BUTTON);
+
+    if (patternState == HIGH && prevPatternState == LOW) {
+        for (int i = 0; i < NUM_LEDS; i++) {
+            leds[i] = CRGB::Black;
+        }
+        if (actualButtonState == LOW) {
+            // toggle on
+            actualButtonState = HIGH;
+                        
+        } else {
+            // toggle off
+            actualButtonState = LOW;
+        }
+        
+    }
+    prevPatternState = patternState;
+
+    if (actualButtonState == HIGH) {
+        pattern = SHIFT;
+    } else {
+        pattern = CENTER_OUT;
+    }
+
+    modifyLightArray(leds, pattern);
 
     // read current volume
     volume = analogRead(ANALOG);
@@ -224,10 +259,24 @@ void loop() {
         // taking that color, translate it to CRGB value and store it in crgb
         crgbFromColor(&crgb, c);
 
-        // cycle through UPDATE_LEDS and set their color
-        for (int i = 0; i < UPDATE_LEDS; i++) {
-            leds[i] = crgb;
+        switch(pattern) {
+            case SHIFT:
+                // cycle through UPDATE_LEDS and set their color
+                for (int i = 0; i < UPDATE_LEDS; i++) {
+                    leds[i] = crgb;
+                }        
+            case CENTER_OUT:
+                int NUM_LEDS_HALF = (int) (NUM_LEDS / 2);
+                int UPDATE_LEDS_HALF = (int)(UPDATE_LEDS / 2);
+                for (int i = NUM_LEDS_HALF - UPDATE_LEDS_HALF - 1; i <  NUM_LEDS_HALF; i++) {
+                    leds[i] = crgb;
+                }
+                for (int j = NUM_LEDS_HALF; j < NUM_LEDS_HALF + UPDATE_LEDS_HALF; j++) {
+                    leds[j] = crgb;
+                }
+       
         }
+        
 
         // update the changes in the LED strip
         FastLED.show();
