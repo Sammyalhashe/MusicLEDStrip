@@ -56,7 +56,7 @@ enum PATTERN {
     SHIFT,
     CENTER_OUT,
     BACKWARDS
-}
+};
 
 // variable to hold current rgb(hsv) value
 CRGB crgb = CRGB(0, 0, 0);
@@ -122,7 +122,7 @@ void updateAverage(float *average, float newVal, int count) {
     *average = old + (newVal - old)/(min(count, FACTOR));
 }
 
-void modifyLightArray(CRGB *arr, PATTERN pattern) {
+void modifyLightArray(CRGB *leds, PATTERN pattern) {
     switch(pattern) {
     case SHIFT:
         // shift the LEDs by UPDATE_LEDS at the beginning of each cycle
