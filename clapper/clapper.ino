@@ -145,11 +145,11 @@ void modifyLightArray(CRGB *leds, PATTERN pattern) {
         */
         int NUM_LEDS_HALF = (int) (NUM_LEDS / 2);
         int UPDATE_LEDS_HALF = (int)(UPDATE_LEDS / 2);
-        for (int i = 0; i < (int) (NUM_LEDS_HALF - 1 - UPDATE_LEDS_HALF); i++) {
+        for (int i = 0; i < (int) (NUM_LEDS_HALF - UPDATE_LEDS_HALF); i++) {
             // center-out left
             leds[i] = leds[i + UPDATE_LEDS_HALF];
         }
-        for (int i = NUM_LEDS - UPDATE_LEDS_HALF - 1; i > NUM_LEDS_HALF; i--) {
+        for (int i = NUM_LEDS - UPDATE_LEDS_HALF - 1; i >= NUM_LEDS_HALF; i--) {
             // center-out right
             leds[i + UPDATE_LEDS_HALF] = leds[i];
         }
