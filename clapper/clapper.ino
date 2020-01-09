@@ -10,6 +10,8 @@
 
   So far, the following light patterns are defined:
   1) Each beat detected, a number of LEDs (UPDATE_LEDS), are updated. Each cycle they are shifted over a number (UPDATE_LEDS) pixels.
+  2) There is another option where on each beat, LEDs are shifted "outwards" from the center of the strip.
+  3) The above two methods can be toggled with by using a push-button. The default is CENTER_OUT, but I am considering changing that order.
 
 */
 #include "FastLED.h"
