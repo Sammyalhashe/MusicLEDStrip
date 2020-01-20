@@ -21,7 +21,7 @@
 #define DELAY 10
 #define PATTERN_BUTTON 12
 #define UPDATE_LEDS 6
-#define NUM_LEDS 215
+#define NUM_LEDS 228
 #define LED_TYPE WS2812B
 #define BRIGHTNESS 64
 #define ANALOG A0
@@ -281,14 +281,15 @@ void loop() {
         
 
         // update the changes in the LED strip
-        FastLED.show();
+        /* FastLED.show(); */
     }
-    /* else { */
-    /*       for (int i = 0; i < UPDATE_LEDS; i++) { */
-    /*           leds[i] = CRGB::Black; */
-    /*       } */
-    /* } */
+    else {
+          for (int i = 0; i < UPDATE_LEDS; i++) {
+              leds[i] = CRGB::Black;
+          }
+    }
     // update the changes in the LED strip
+    FastLED.show();
 
 
     // wait a bit and update time and prevVolume
