@@ -1,3 +1,4 @@
+// vim: foldmethod=marker
 /**
   This is the code I made for reading input from a (hopefully amplified)
   microphone signal and processing the sound voltage input for detection
@@ -18,6 +19,7 @@
 /*
     Globals defined for the script
 */
+// {{{1
 #define DELAY 10
 #define PATTERN_BUTTON 12
 #define UPDATE_LEDS 6
@@ -32,6 +34,7 @@
 /**
     Variables defined to keep track of the current state
 */
+// {{{1
 // array holding CRGB values
 CRGB leds[NUM_LEDS];
 // variable to read in "volume" voltage values
@@ -58,6 +61,7 @@ int brightness = BRIGHTNESS;
 // right now I'm incrementing it by DELAY
 int time = 0;
 
+// {{{1
 enum PATTERN {
     SHIFT,
     CENTER_OUT,
@@ -65,16 +69,19 @@ enum PATTERN {
 };
 
 PATTERN pattern;
+// }}}1
 
 // variable to hold current rgb(hsv) value
 CRGB crgb = CRGB(0, 0, 0);
 
-// struct defining a color value
+// struct defining a color value {{{1
 struct color {
     int r;
     int g;
     int b;
 };
+/// }}}1
+
 // type alias for clarity
 // Also, variable defined to hold current rgb value
 typedef struct color Color;
@@ -85,20 +92,24 @@ Color c;
     This method takes a pointer to a Color variable
     and procedes to set its values accordingly
 */
+// setColor {{{1
 void setColor(Color *c, int r, int g, int b) {
     c->r = r;
     c->g = g;
     c->b = b;
 }
+// }}}1
 
 /*
     This method takes a pointer for a color
     and sets its values to a random rgb value
 */
+// randomColor {{{1
 void randomColor(Color *c) {
     setColor(c, random8(), 255, random8());
 }
 
+// setNextColor {{{1
 void setNextColor(Color *c, int palette) {
     switch(palette) {
     case 1 :
@@ -115,29 +126,35 @@ void setNextColor(Color *c, int palette) {
     inserts its details into an equivalent
     CRGB pointer
 */
+// crgbFromColor {{{1
 void crgbFromColor(CRGB *crgb, Color c) {
     // CRGB PURPLE = CHSV( HUE_PURPLE, 255, 255 );
     *crgb = CHSV(c.r, c.g, c.b);
 }
 
+// simpleUpdateAverage {{{1
 void simpleUpdateAverage(float *average, float newVal) {
     float old = *average;
     *average = (old + newVal) / 2.0;
 }
 
+// updateAverage {{{1
 void updateAverage(float *average, float newVal, int count) {
     float old = *average;
     *average = old + (newVal - old)/(min(count, FACTOR));
 }
 
+// modifyLightArray {{{1
 void modifyLightArray(CRGB *leds, PATTERN pattern) {
     switch(pattern) {
+    // {{{2
     case SHIFT:
         // shift the LEDs by UPDATE_LEDS at the beginning of each cycle
         for (int i = NUM_LEDS - 1; i >= UPDATE_LEDS; i--) {
             leds[i] = leds[i - UPDATE_LEDS];
         }
         break;
+    // {{{2
     case CENTER_OUT:
         /*
         for i in range(0, n // 2 - 1 - UPDATE_LEDS // 2):
@@ -159,7 +176,7 @@ void modifyLightArray(CRGB *leds, PATTERN pattern) {
 
 }
 
-// the setup function runs once when you press reset or power the board
+// the setup function runs once when you press reset or power the board {{{1
 void setup() {
     Serial.begin(9600);
     
@@ -194,14 +211,16 @@ void setup() {
     // wait some initial time
     delay(5000);
 }
+// }}}1
 
 
 
-// the loop function runs over and over again forever
+// the loop function runs over and over again forever {{{1
 void loop() {
 
     patternState = digitalRead(PATTERN_BUTTON);
 
+    // handle button state {{{2
     if (patternState == HIGH && prevPatternState == LOW) {
         for (int i = 0; i < NUM_LEDS; i++) {
             leds[i] = CRGB::Black;
@@ -223,6 +242,7 @@ void loop() {
     } else {
         pattern = CENTER_OUT;
     }
+    // }}}2
 
     modifyLightArray(leds, pattern);
 
@@ -230,6 +250,7 @@ void loop() {
     volume = analogRead(ANALOG);
     Serial.println(volume);
 
+    // audio processing {{{2
     if (volume < avgVolume / 2.0 || volume < 25) {
         volume = 0.0;
     } else {
@@ -261,12 +282,16 @@ void loop() {
         // taking that color, translate it to CRGB value and store it in crgb
         crgbFromColor(&crgb, c);
 
+        // {{{3
         switch(pattern) {
+            // SHIFT case {{{4
             case SHIFT:
                 // cycle through UPDATE_LEDS and set their color
                 for (int i = 0; i < UPDATE_LEDS; i++) {
                     leds[i] = crgb;
                 }        
+            // }}}4
+            // CENTER_OUT case {{{4
             case CENTER_OUT:
                 int NUM_LEDS_HALF = (int) (NUM_LEDS / 2);
                 int UPDATE_LEDS_HALF = (int)(UPDATE_LEDS / 2);
@@ -275,21 +300,28 @@ void loop() {
                 }
                 for (int j = NUM_LEDS_HALF; j < NUM_LEDS_HALF + UPDATE_LEDS_HALF; j++) {
                     leds[j] = crgb;
-                }
-       
+                } // }}}4
         }
+        // }}}3 
         
 
         // update the changes in the LED strip
-        /* FastLED.show(); */
+        if (actualButtonState == HIGH) {
+            FastLED.show();
+        }
     }
     else {
-          for (int i = 0; i < UPDATE_LEDS; i++) {
+        if (actualButtonState == LOW) {
+            for (int i = 0; i < UPDATE_LEDS; i++) {
               leds[i] = CRGB::Black;
-          }
+            }
+        }
+          
     }
     // update the changes in the LED strip
-    FastLED.show();
+    if (actualButtonState == LOW) {
+        FastLED.show();
+    }
 
 
     // wait a bit and update time and prevVolume
