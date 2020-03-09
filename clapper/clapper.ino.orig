@@ -23,12 +23,11 @@
 #define DELAY 10
 #define PATTERN_BUTTON 12
 #define UPDATE_LEDS 6
-#define NUM_LEDS 518
+#define NUM_LEDS 228
 #define LED_TYPE WS2812B
 #define BRIGHTNESS 64
 #define ANALOG A0
-#define FREQ A5
-#define THRESH 55
+#define THRESH 35
 #define DATAPIN 6
 #define FACTOR 10 // constant defines how "quickly" a running average "catches up to a new value"
 
@@ -45,7 +44,6 @@ CRGB leds[NUM_LEDS];
 // I consider a volume of <= 15 effectively zero. I am thus initially
 // setting the max volume to 15
 float volume;
-double freq;
 float maxVol = 15;
 float avgVolume = 0;
 float prevVolume = 0;
@@ -61,7 +59,7 @@ float percentage;
 int brightness = BRIGHTNESS;
 // keep track of time the program is active for cool timing affects
 // right now I'm incrementing it by DELAY
-/* int time = 0; */
+int time = 0;
 
 // {{{1
 enum PATTERN {
@@ -111,36 +109,11 @@ void randomColor(Color *c) {
     setColor(c, random8(), 255, random8());
 }
 
-bool freqInRange(double freq, int l, int u) {
-    if (freq >= l && freq < u) {
-        return true;
-    }
-    return false;
-}
-
-void freqColor(Color *c, double freq) {
-    if (freq < 5) {
-        setColor(c, 255, 255, 25); // red
-    } else if (freq >= 5 && freq < 10) {
-        setColor(c, 25, 255, 25); // neon green
-        // randomColor(c); // fallback
-    } else if (freqInRange(freq, 10, 20)) {
-        setColor(c, 255, 77, 255); // ultra pink
-    } else if (freqInRange(freq, 20, 30)) {
-        setColor(c, 0, 255, 128); // navy blue
-    } else {
-        randomColor(c); // fallback
-    }
-}
-
 // setNextColor {{{1
-void setNextColor(Color *c, double freq, int palette) {
+void setNextColor(Color *c, int palette) {
     switch(palette) {
     case 1 :
         randomColor(c);
-        break;
-    case 2:
-        freqColor(c, freq);
         break;
     default       :
         randomColor(c);
@@ -275,9 +248,7 @@ void loop() {
 
     // read current volume
     volume = analogRead(ANALOG);
-    freq = analogRead(FREQ);
     Serial.println(volume);
-    setNextColor(&c, freq, 2);
 
     // audio processing {{{2
     if (volume < avgVolume / 2.0 || volume < 25) {
@@ -295,7 +266,7 @@ void loop() {
 
     // if there is a significant volume change
     // we only consider when the prevVolume is at most at the avgVolume level
-    if ((volume > THRESH) && (volume - prevVolume > avgVolume - prevVolume) && (avgVolume - prevVolume > 0)) {
+    if (volume > THRESH && volume - prevVolume > avgVolume - prevVolume && avgVolume - prevVolume > 0) {
         // update avgBump
         /* bumpCounter += 1; */
         /* updateAverage(&avgBump, volume - prevVolume, bumpCounter); */
@@ -307,7 +278,7 @@ void loop() {
         brightness = (int) (percentage * 255);
         FastLED.setBrightness(brightness);
         // write a random rgb(hsv) color into this Color variable
-        // setNextColor(&c, freq, 2);
+        setNextColor(&c, 1);
         // taking that color, translate it to CRGB value and store it in crgb
         crgbFromColor(&crgb, c);
 
@@ -355,6 +326,6 @@ void loop() {
 
     // wait a bit and update time and prevVolume
     delay(DELAY);
-    /* time += DELAY; */
+    time += DELAY;
     prevVolume = volume;
 }
