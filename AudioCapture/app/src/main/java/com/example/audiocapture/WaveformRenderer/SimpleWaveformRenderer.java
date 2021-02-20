@@ -18,6 +18,7 @@ import com.example.audiocapture.R;
 public class SimpleWaveformRenderer implements WaveformRenderer {
 
     private static final String TAG = "WaveformRenderer :: ";
+    private static final boolean TESTING = false;
 
     @ColorInt
     private final int backgroundColor;
@@ -54,7 +55,7 @@ public class SimpleWaveformRenderer implements WaveformRenderer {
     }
 
     private void renderWaveform(byte[] waveform, float width, float height, boolean path) {
-        Log.i(TAG, this.callingContext.getResources().getString(R.string.simpleWR_renderWaveform));
+        if (TESTING) Log.i(TAG, this.callingContext.getResources().getString(R.string.simpleWR_renderWaveform));
         // basically screen width divided by number of points
         float xInc = width / (float) waveform.length;
         // just decided on this value for Y_FACTOR
@@ -92,7 +93,7 @@ public class SimpleWaveformRenderer implements WaveformRenderer {
 
 
     private void renderBlank(float width, float height, boolean path) {
-        Log.i(TAG, this.callingContext.getResources().getString(R.string.simpleWR_renderBlank));
+        if (TESTING) Log.i(TAG, this.callingContext.getResources().getString(R.string.simpleWR_renderBlank));
         int y = (int) (height * HALF_FACTOR);
         if (path) {
             waveformPath.moveTo(0, y);

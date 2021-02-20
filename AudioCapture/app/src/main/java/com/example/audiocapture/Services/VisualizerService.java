@@ -2,6 +2,7 @@ package com.example.audiocapture.Services;
 
 import android.app.Service;
 import android.content.Intent;
+import android.media.AudioRecord;
 import android.media.audiofx.Visualizer;
 import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
@@ -39,6 +40,7 @@ import io.reactivex.subjects.Subject;
 
 
 public class VisualizerService extends Service implements Visualizer.OnDataCaptureListener {
+    private static final boolean TESTING = false;
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     private static final String TAG = "VISUALIZER_SERVICE :: ";
     private final IBinder binder = new VisualizerBinder();
@@ -74,10 +76,10 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
      */
     @Override
     public void onWaveFormDataCapture(Visualizer visualizer, byte[] waveform, int samplingRate) {
-        Log.i(TAG, getResources().getString(R.string.vis_onWaveformCapture) + waveform.length);
+        if (TESTING) Log.i(TAG, getResources().getString(R.string.vis_onWaveformCapture) + waveform.length);
         waveformSubject.onNext(waveform);
         for (WebSocket socket: webSockets) {
-            Log.i(TAG, getResources().getString(R.string.vis_sendingSockets));
+            if (TESTING) Log.i(TAG, getResources().getString(R.string.vis_sendingSockets));
             socket.send(waveform);
         }
     }
@@ -111,7 +113,7 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
      */
     @Override
     public void onFftDataCapture(Visualizer visualizer, byte[] fft, int samplingRate) {
-        Log.i(TAG, getResources().getString(R.string.vis_onFFTDataCapture) + fft.length);
+        if (TESTING) Log.i(TAG, getResources().getString(R.string.vis_onFFTDataCapture) + fft.length);
         fftSubject.onNext(fft);
     }
 
@@ -187,16 +189,19 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
         } catch (UnknownHostException e) {
             Log.e(TAG, e.toString());
             return "0.0.0.0";
+        } catch (NullPointerException e) {
+            Log.e(TAG, "getDeviceWifiAddress: ", e);
+            return "0.0.0.0";
         }
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        Log.i(TAG, getResources().getString(R.string.vis_onBind));
+        if (TESTING) Log.i(TAG, getResources().getString(R.string.vis_onBind));
         // get devices ip address and stream it to firebase for synchronization
         String ip = getDeviceWifiAddress();
-        Log.i(TAG, String.format(getResources().getString(R.string.vis_ipIs), ip));
+        if (TESTING) Log.i(TAG, String.format(getResources().getString(R.string.vis_ipIs), ip));
         Map<String, String> ipMap = new HashMap<>();
         ipMap.put(getResources().getString(R.string.vis_ipFirebaseAddressField), ip);
         db.collection(getResources().getString(R.string.vis_AudioData))
@@ -236,9 +241,10 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
     }
 
     private boolean initializeVisualizer() {
-        Log.i(TAG, "initializeVisualizer: initializing");
+        if (TESTING) Log.i(TAG, "initializeVisualizer: initializing");
         int[] range = Visualizer.getCaptureSizeRange();
         int maxSize = range[1];
+        if (TESTING) Log.i(TAG, String.format("initializeVisualizer: maxSize: %d", maxSize));
         mRawAudioData = new byte[maxSize];
         mFormattedAudioData = new int[maxSize];
 
@@ -261,7 +267,7 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
                 if (mVisualizer.getEnabled()) {
                     mVisualizer.setEnabled(isCapturing);
                 }
-                mVisualizer.setCaptureSize(mRawAudioData.length);
+                mVisualizer.setCaptureSize(maxSize);
             }
             return true;
         } catch (UnsupportedOperationException e) {
@@ -275,11 +281,11 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
     }
 
     public boolean startCapturingAudio() {
-        Log.i(TAG, getResources().getString(R.string.data_capture_begin));
+        if (TESTING) Log.i(TAG, getResources().getString(R.string.data_capture_begin));
         if (mVisualizer != null) {
             if (!mVisualizer.getEnabled()) {
                 try {
-                    Log.i(TAG, "Enabling Visualizer");
+                    if (TESTING) Log.i(TAG, "Enabling Visualizer");
                     isCapturing = true;
                     mVisualizer.setEnabled(true);
                     lastCapturedTimeMS = System.currentTimeMillis();
@@ -293,7 +299,7 @@ public class VisualizerService extends Service implements Visualizer.OnDataCaptu
     }
 
     public void streamData() {
-        Log.i(TAG, getResources().getString(R.string.vis_streamData));
+        if (TESTING) Log.i(TAG, getResources().getString(R.string.vis_streamData));
         this.mBackgroundTask = new BackgroundTask(this).execute();
     }
 

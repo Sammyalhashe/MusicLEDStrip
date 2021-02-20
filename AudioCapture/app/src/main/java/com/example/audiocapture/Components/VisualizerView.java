@@ -18,6 +18,7 @@ import java.util.Arrays;
  * this View's canvas.
  */
 public class VisualizerView extends View {
+    private static final boolean TESTING = false;
     private static final String TAG = "VisualizerView :: ";
     private byte[][] waveform;
     private WaveformRenderer waveformRenderer;
@@ -41,7 +42,7 @@ public class VisualizerView extends View {
      * @param renderer
      */
     public void setWaveformRenderer(WaveformRenderer renderer) {
-        Log.i(TAG, getResources().getString(R.string.visView_setWaveformRenderer));
+        if (TESTING) Log.i(TAG, getResources().getString(R.string.visView_setWaveformRenderer));
         this.waveformRenderer = renderer;
     }
 
@@ -54,7 +55,7 @@ public class VisualizerView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        Log.i(TAG, getResources().getString(R.string.visView_onDraw));
+        if (TESTING) Log.i(TAG, getResources().getString(R.string.visView_onDraw));
         if (waveformRenderer != null) {
             waveformRenderer.render(canvas, waveform);
         }

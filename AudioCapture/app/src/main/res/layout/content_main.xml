@@ -8,6 +8,7 @@
     tools:context=".MainActivity"
     tools:showIn="@layout/activity_main">
 
+    <!--
     <Button
         android:id="@+id/button"
         android:layout_width="wrap_content"
@@ -19,6 +20,7 @@
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+        -->
 
     <com.example.audiocapture.Components.VisualizerView
         android:id="@+id/waveform_view"
@@ -27,5 +29,6 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         tools:context="com.example.audiocapture.MainActivity"
         tools:showIn="@layout/activity_main" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
 
